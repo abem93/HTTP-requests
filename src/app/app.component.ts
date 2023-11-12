@@ -1,6 +1,6 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { map } from 'rxjs';
+import { Subject, Subscription, map } from 'rxjs';
 
 import { Post } from './post.model';
 import { PostsService } from './posts.service';
@@ -10,14 +10,20 @@ import { PostsService } from './posts.service';
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.css'],
 })
-export class AppComponent implements OnInit {
+
+
+export class AppComponent implements OnInit, OnDestroy {
   loadedPosts = [];
   isFetching = false;
+  error = null;
+  private errorSub: Subscription;
 
   constructor(private http: HttpClient, private postService: PostsService) {}
 
   ngOnInit() {
-    this.onFetchPosts();
+    this.errorSub = this.postService.error.subscribe(errorMessage => {
+      this.error = errorMessage
+    })
   }
 
   onCreatePost(postData: Post) {
@@ -30,6 +36,10 @@ export class AppComponent implements OnInit {
     this.postService.fetchPosts().subscribe(posts =>{
       this.isFetching = false;
       this.loadedPosts = posts
+    }, error => {
+      this.isFetching = false;
+      this.error = error.error.error;
+      console.log(error)
     });
   }
 
@@ -38,5 +48,12 @@ export class AppComponent implements OnInit {
     this.postService.clearPosts().subscribe(()=>{
       this.loadedPosts = [];
     })
+  }
+  onHandleError(){
+    this.error = null;
+  }
+
+  ngOnDestroy(): void {
+      this.errorSub.unsubscribe();
   }
 }
